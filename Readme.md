@@ -7,7 +7,7 @@
 Clone this repository to your local machine: 
 
 ```bash
-git clone https://github.com/yourusername/yourrepository.git
+git clone https://github.com/hordii-rushynets/trembita-test.git
 cd trembita-test
 ```
 
