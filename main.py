@@ -8,6 +8,8 @@ from apps.static_report.utils import get_current_quarter, get_current_year
 from database import *
 from settings import *
 
+sys.setrecursionlimit(100)
+
 if __name__ == '__main__':
     logging.basicConfig(filename='./trembita.log',
                         filemode='a',
