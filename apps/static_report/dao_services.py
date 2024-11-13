@@ -31,19 +31,45 @@ class SRDiiaApiDaoService:
         :return List[ODAReport]: A list of ODA reports for the specified year and quarter.
         """
         logger.info(f'Get ODA Reports: year - {year}, quarter - {quarter}.')
-        return self.make_get_request(f'list/{year}/{quarter}/?format=json')
+        return self.make_get_request(f'list/{year}/{quarter}/?format=json').get('results')
 
-    def get_tsnaps_in_region(self, report_id: int) -> List[TSNAPRegion]:
+    def get_tsnaps_in_region(self, report_id: int, collected_results: List[TSNAPRegion] = None, page: int=1) -> List[TSNAPRegion]:
         """
         Fetches the list of TsNAPs of the region:.
         
         :param report_id: The ID of the ODA report to retrieve TSNAP region data.
+        :param collected_results: A list of TSNAPRegion objects to accumulate results across pages. Default is None, which initializes an empty list.
+        :param page: The current page number for paginated requests. Default is 1.
 
         :return List[TSNAPRegion]: A list of TSNAP regions associated with the specified report ID.
         """
-
         logger.info(f'Get list of TSNAP region: report_id: {report_id}')
-        return self.make_get_request(f'entries/{report_id}')
+
+        if collected_results is None:
+            collected_results = []
+
+        entries = self.make_get_request(f'entries/{report_id}?page={page}')
+        collected_results.extend(entries.get('results', []))
+
+        next_url = entries.get('next')
+
+        if next_url:
+            query_params = self._get_query_params(next_url)
+            return self.get_tsnaps_in_region(report_id, collected_results, query_params.get('page'))
+
+        return collected_results
+
+    def _get_query_params(self, url: str) -> dict:
+        """
+        Retrieve all query params from url.
+
+        :param url: url to parse.
+
+        :return dict: query params.
+        """
+        query_params = url.split('?')[1]
+        return dict(param.split('=') for param in query_params.split('&') if '=' in param)
+
 
     def get_tsnap_details(self, report_entries_id: int) -> List[TSNAPDetails]:
         """
@@ -54,7 +80,7 @@ class SRDiiaApiDaoService:
         :return List[TSNAPDetails]: Detailed data for the specified TSNAP report entry.
         """
         logger.info(f'Get list of TSNAP details: report_entries_id: {report_entries_id}.')
-        return self.make_get_request(f'detail/{report_entries_id}')
+        return self.make_get_request(f'detail/{report_entries_id}').get('results')
 
     def make_get_request(self, url: str) -> list:
         """
@@ -66,7 +92,7 @@ class SRDiiaApiDaoService:
         try:
             response = requests.get(f'{self.base_url}/{url}')
             response.raise_for_status()
-            return response.json().get('results')
+            return response.json()
         except requests.exceptions.HTTPError as http_err:
             status_code = http_err.response.status_code if http_err.response else "No response"
             logger.error(f'Status code: {status_code}')
